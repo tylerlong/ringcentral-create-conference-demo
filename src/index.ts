@@ -2,6 +2,10 @@ import RingCentral from '@rc-ex/core';
 import PubNubExtension from '@rc-ex/pubnub';
 import ExtensionTelephonySessionsEvent from '@rc-ex/core/lib/definitions/ExtensionTelephonySessionsEvent';
 import CallSessionObject from '@rc-ex/core/lib/definitions/CallSessionObject';
+import RTCAudioStreamSource from 'node-webrtc-audio-stream-source';
+import wrtc from 'wrtc';
+import Softphone from 'ringcentral-softphone';
+import waitFor from 'wait-for-async';
 
 const rc = new RingCentral({
   server: process.env.RINGCENTRAL_SERVER_URL,
@@ -10,8 +14,11 @@ const rc = new RingCentral({
 });
 
 let conferenceCreated = false;
+let conferenceReady = false;
 let conferenceSessionId = '';
 let driverPartyId = '';
+let voiceCallToken = '';
+
 const main = async () => {
   await rc.authorize({
     username: process.env.RINGCENTRAL_USERNAME!,
@@ -46,6 +53,7 @@ const main = async () => {
           JSON.stringify(conferenceSession, null, 2)
         );
         conferenceSessionId = conferenceSession.id!;
+        voiceCallToken = conferenceSession.voiceCallToken!;
       }
 
       // bring driver to conference
@@ -55,6 +63,7 @@ const main = async () => {
         party.to?.phoneNumber === 'conference' &&
         party.status?.code === 'Answered'
       ) {
+        conferenceReady = true;
         const callParty = await rc
           .restapi()
           .account()
@@ -99,4 +108,30 @@ const main = async () => {
   );
 };
 
+// create a phone
+const autoPhone = async () => {
+  await waitFor({interval: 1000, condition: () => rc.token !== undefined});
+
+  const rtcAudioStreamSource = new RTCAudioStreamSource();
+  const track = rtcAudioStreamSource.createTrack();
+  const inputAudioStream = new wrtc.MediaStream();
+  inputAudioStream.addTrack(track);
+  const softphone = new Softphone(rc);
+  await softphone.register();
+
+  // auto answer incoming call
+  softphone.on('INVITE', async (sipMessage: any) => {
+    softphone.answer(sipMessage);
+  });
+
+  // auto dial voiceCallToken
+  await waitFor({interval: 1000, condition: () => voiceCallToken !== ''});
+  await softphone.invite(voiceCallToken, inputAudioStream);
+
+  // auto call customer
+  await waitFor({interval: 1000, condition: () => conferenceReady});
+  await softphone.invite(process.env.CUSTOMER_NUMBER, inputAudioStream);
+};
+
 main();
+autoPhone();

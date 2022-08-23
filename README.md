@@ -2,10 +2,10 @@
 
 ## User story
 
-- driver call host
-- host answer the call
-- a conference is created
-- driver is brought into the conference
-- host call customer
-- customer answer the call
-- customer is brought into the conference
+- driver call host (manually)
+- host answer the call (automatically)
+- a conference is created (automatically)
+- driver is brought into the conference (automatically)
+- host call customer (automatically)
+- customer answer the call (manually)
+- customer is brought into the conference (automatically)
