@@ -16,7 +16,7 @@ const rc = new RingCentral({
 let conferenceCreated = false;
 let conferenceReady = false;
 let conferenceSessionId = '';
-let driverPartyId = '';
+let userAPartyId = '';
 let voiceCallToken = '';
 
 const main = async () => {
@@ -30,7 +30,6 @@ const main = async () => {
   pubNubExtension.subscribe(
     ['/restapi/v1.0/account/~/extension/~/telephony/sessions'],
     async (event: ExtensionTelephonySessionsEvent) => {
-      // console.log(JSON.stringify(event, null, 2));
       const telephonySessionId = event.body!.telephonySessionId!;
       const party = event.body!.parties![0];
 
@@ -41,7 +40,7 @@ const main = async () => {
         party.status?.code === 'Answered' &&
         party.to?.phoneNumber?.includes(process.env.HOST_NUMBER!)
       ) {
-        driverPartyId = party.id!;
+        userAPartyId = party.id!;
         conferenceCreated = true;
         const r = await rc.post(
           '/restapi/v1.0/account/~/telephony/conference',
@@ -56,7 +55,7 @@ const main = async () => {
         voiceCallToken = conferenceSession.voiceCallToken!;
       }
 
-      // bring driver to conference
+      // bring user A to conference
       if (
         conferenceCreated &&
         party.direction === 'Outbound' &&
@@ -73,19 +72,19 @@ const main = async () => {
           .bringIn()
           .post({
             telephonySessionId,
-            partyId: driverPartyId,
+            partyId: userAPartyId,
           });
         console.log(
-          'Driver is in conference:',
+          'User A is in conference:',
           JSON.stringify(callParty, null, 2)
         );
       }
 
-      // bring customer to conference
+      // bring user B to conference
       if (
         conferenceCreated &&
         party.status?.code === 'Answered' &&
-        party.to?.phoneNumber?.includes(process.env.CUSTOMER_NUMBER!) &&
+        party.to?.phoneNumber?.includes(process.env.USER_B_NUMBER!) &&
         party.direction === 'Outbound'
       ) {
         const callParty = await rc
@@ -100,7 +99,7 @@ const main = async () => {
             partyId: party.id,
           });
         console.log(
-          'Customer is in conference:',
+          'User B is in conference:',
           JSON.stringify(callParty, null, 2)
         );
       }
@@ -128,9 +127,9 @@ const autoPhone = async () => {
   await waitFor({interval: 1000, condition: () => voiceCallToken !== ''});
   await softphone.invite(voiceCallToken, inputAudioStream);
 
-  // auto call customer
+  // auto call user B
   await waitFor({interval: 1000, condition: () => conferenceReady});
-  await softphone.invite(process.env.CUSTOMER_NUMBER, inputAudioStream);
+  await softphone.invite(process.env.USER_B_NUMBER, inputAudioStream);
 };
 
 main();
