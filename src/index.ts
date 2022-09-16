@@ -78,6 +78,17 @@ const main = async () => {
           'User A is in conference:',
           JSON.stringify(callParty, null, 2)
         );
+
+        // // Extended User Story
+        // await waitFor({interval: 20000});
+        // await rc
+        //   .restapi()
+        //   .account()
+        //   .telephony()
+        //   .sessions(conferenceSessionId)
+        //   .parties(callParty.id)
+        //   .delete();
+        // console.log('User A is removed from conference');
       }
 
       // bring user B to conference
@@ -102,6 +113,17 @@ const main = async () => {
           'User B is in conference:',
           JSON.stringify(callParty, null, 2)
         );
+
+        // Extended User Story
+        await waitFor({interval: 20000});
+        await rc
+          .restapi()
+          .account()
+          .telephony()
+          .sessions(conferenceSessionId)
+          .parties(callParty.id)
+          .delete();
+        console.log('User B is removed from conference');
       }
     }
   );
